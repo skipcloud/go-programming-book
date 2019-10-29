@@ -1,0 +1,30 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+/*
+ * Write a program wordfreq to report the frequency of each word
+ * in an input text file. Call input.Split(bufio.ScanWords) before
+ * the first call to Scan to break the input into words instead of
+ * lines
+ */
+
+func main() {
+	words := make(map[string]int)
+
+	in := bufio.NewScanner(os.Stdin)
+	in.Split(bufio.ScanWords)
+	for in.Scan() {
+		words[in.Text()]++
+	}
+
+	fmt.Printf("\n\nWord\tCount\n\n")
+
+	for k, v := range words {
+		fmt.Printf("%s\t%d\n", k, v)
+	}
+}
