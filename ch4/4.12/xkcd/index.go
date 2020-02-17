@@ -93,7 +93,7 @@ func (i *index) Update() error {
 	if err != nil {
 		return err
 	}
-
+	i.writeFile()
 	return nil
 }
 

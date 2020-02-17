@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/skipcloud/go-programming-book/ch4/4.12/xkcd"
 )
@@ -16,17 +18,22 @@ import (
 */
 
 func main() {
+	if len(os.Args) == 1 {
+		log.Fatal("search term missing")
+		os.Exit(1)
+	}
 	client, err := xkcd.NewClient()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	client.Index.Update()
-	s := "golang"
-	r := client.Search(s)
+	r := client.Search(strings.Join(os.Args[1:], " "))
+
+	fmt.Printf("\n%d comics found\n\n", len(r.Comics))
 	for _, comic := range r.Comics {
 		fmt.Println(comic.Title)
 		fmt.Println(comic.Link)
-		fmt.Printf("%s\n--------------\n", comic.Transcript)
+		fmt.Printf("%s\n\n--------------\n\n", comic.Transcript)
 	}
 }
