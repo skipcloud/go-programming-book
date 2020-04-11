@@ -18,8 +18,18 @@ import (
 					attribute=value, e.g. class=container
 */
 
+type userInput struct {
+	userElements []*element
+}
+
+type element struct {
+	name  string
+	attrs []string
+}
+
 func main() {
 	dec := xml.NewDecoder(os.Stdin)
+	input := parseInput()
 	var stack []xml.StartElement // stack of element names
 	for {
 		tok, err := dec.Token()
@@ -35,74 +45,83 @@ func main() {
 		case xml.EndElement:
 			stack = stack[:len(stack)-1] // pop
 		case xml.CharData:
-			if containsAll(stack, os.Args[1:]) {
-				fmt.Printf("%s: %s\n", joinStack(stack, os.Args[1:]), tok)
+			if containsAll(stack, input.userElements) {
+				fmt.Printf("%s: %s\n", joinStack(stack, input.userElements), tok)
 			}
 		}
 	}
 }
 
+func parseInput() userInput {
+	input := userInput{}
+	var el *element
+
+	for _, v := range os.Args[1:] {
+		if strings.Contains(v, "=") {
+			el.attrs = append(el.attrs, v)
+			continue
+		}
+		el = &element{
+			name: v,
+		}
+		input.userElements = append(input.userElements, el)
+	}
+	return input
+}
+
 // containsAll reports whether x contains the elements of y, in order.
-func containsAll(x []xml.StartElement, y []string) bool {
+func containsAll(x []xml.StartElement, y []*element) bool {
 	for len(y) <= len(x) {
-		elementsToSkip := 1
 		if len(y) == 0 {
 			return true
 		}
-		// if the element matches, send the element and the input elements
-		// after our element to containsAttr. If y[0] is an element then
-		// it's possible there are attributes after it in the input.
-		// For example: []string{"div", "class=big", "id=post", "div"...}
-		if x[0].Name.Local == y[0] {
-			if n, ok := containsAttr(x[0], y[1:]); ok {
-				// update the num of elements to skip. For example, if the input
-				// has []string{element, attr, attr, element} and the xml Element
-				// contains the two attrs from the input then we need to skip two
-				// more elements in both our slices
-				elementsToSkip += n
-			}
-			// element contains all the
-			y = y[elementsToSkip:]
+		// if the element matches, send the xml element and the input element
+		// to containsAttrs to check if the StartElement contains all the attributes
+		// in the element y[0]
+		if x[0].Name.Local == y[0].name && containsAttrs(x[0], y[0]) {
+			y = y[1:]
 		}
-		x = x[elementsToSkip:]
+		x = x[1:]
 	}
 	return false
 }
 
-// containsAttr iterates over contiguous attributes in the user input stopping
-// at any element it comes across. It will return the number of attributes in
-// the input that matched and true if the element contains an attribute
-// matching the input otherwise it returns false.
-func containsAttr(el xml.StartElement, input []string) (int, bool) {
-	// iterate over user input as long as the elements contain "="
-	// or in other words as long as the input is for attributes
-	var numAttr int
+// containsAttrs takes an xml.StartElement and a user element
+// and checks all of the attributes in the user element against
+// the attributes of the StartElement. The function returns true
+// if the StartElement contains all of the attributes in the user
+// element
+func containsAttrs(el xml.StartElement, input *element) bool {
 outer:
-	for i := 0; i < len(input) && strings.Contains(input[i], "="); i++ {
+	for _, v := range input.attrs {
 		// iterate over all the attributes of the element
 		for _, a := range el.Attr {
 			// check the input equals the attribute
-			if input[i] == (a.Name.Local + "=" + a.Value) {
+			if v == (a.Name.Local + "=" + a.Value) {
 				// if it does then continue, we're good. Jump to
-				// the label "outer" to check the next input string
-				numAttr++
+				// the label "outer" to check the next user attribute
 				continue outer
 			}
 		}
+		return false
 	}
-	if numAttr == 0 {
-		return numAttr, false
-	}
-	return numAttr, true
+	return true
 }
 
-// joinStack takes a stack of xml elements and joins the name of the elements
-// in the stack
-func joinStack(stack []xml.StartElement, input []string) string {
+// joinStack takes a slice of xml.StartElements and a slice of user elements
+// and creates a "stack trace" inserting attibutes if the StartElement contains
+// all of the specified attributes, e.g. div <id=container class=big> img p
+func joinStack(stack []xml.StartElement, input []*element) string {
 	newStack := []string{}
 
 	for _, el := range stack {
 		newStack = append(newStack, el.Name.Local)
+		for _, v := range input {
+			if el.Name.Local == v.name && containsAttrs(el, v) {
+				newStack = append(newStack, fmt.Sprintf("<%s>", strings.Join(v.attrs, " ")))
+			}
+
+		}
 	}
 	return strings.Join(newStack, " ")
 }
