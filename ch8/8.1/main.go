@@ -91,7 +91,7 @@ func parseInput() map[string]string {
 
 func writeToStdOut(cities []string, times map[string]string) {
 	const format = "%v\t%v\n"
-	tw := new(tabwriter.Writer).Init(os.Stdout, 0, 5, 2, ' ', 0)
+	tw := new(tabwriter.Writer).Init(os.Stdout, 0, 5, 3, ' ', 0)
 
 	fmt.Fprintf(tw, format, "City", "Local Time")
 	fmt.Fprintf(tw, format, "----", "----------")
