@@ -40,12 +40,16 @@ func walkChildren(node *html.Node, links []string) []string {
 
 func extractLinks(node *html.Node) []string {
 	links := []string{}
-	if node.Type == html.ElementNode && node.Data == "a" {
+	if IsLinkHavingNode(node) {
 		for _, v := range node.Attr {
-			if v.Key == "href" {
+			if v.Key == "href" || v.Key == "src" {
 				links = append(links, v.Val)
 			}
 		}
 	}
 	return links
+}
+
+func IsLinkHavingNode(node *html.Node) bool {
+	return node.Type == html.ElementNode && (node.Data == "a" || node.Data == "link" || node.Data == "img")
 }

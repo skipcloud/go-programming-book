@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -18,13 +21,11 @@ import (
 	within the original domain (for instance golang.org) should be fetched. URLs
 	within mirrored pages should be altered as needed so that they refer to the
 	mirrored page, not the original.
-*/
 
-// TODO: Ensure all hrefs are changed to the new local path as well, but
-//       only affect paths that are for the same site as the base
-// TODO: Work out how to save webpages without making second request
-// TODO: Write a function to save the page based on the Path, ie.
-//       example.com/blog/new/post will be saved in $dir/blog/new/post.html
+	note from Skip: this is by far a perfect implementation, for example an import
+					statement in a CSS file won't be followed so CSS files might be
+					missing. That being said I think covered most of the bases.
+*/
 
 // The default directory that the website will be saved in
 var dir = "/tmp/sites"
@@ -114,52 +115,88 @@ func urlToFilePath(path string) string {
 func savePage(page *html.Node, u *url.URL) error {
 	// first we need to create the directories
 	dirs := strings.Split(u.Path, "/")
-	file := dirs[len(dirs)-1]
-	if file == "" {
-		file = "index.html"
-	}
+	file := ensureExtension(dirs[len(dirs)-1])
 	path := urlToFilePath(strings.Join(dirs[:len(dirs)-1], "/"))
 	// if the dir doesn't exist then create the path
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	stat, err := os.Stat(path)
+	if os.IsNotExist(err) || !stat.IsDir() {
 		err = os.MkdirAll(path, 0777)
 		if err != nil {
 			return err
 		}
 	}
+	if strings.Contains(file, "all") {
+		println(fmt.Sprintf("%s/%s", path, file))
+	}
 
 	// then we create the file
-	println(file)
-	f, err := os.Create(path + "/" + file)
+	f, err := os.Create(fmt.Sprintf("%s/%s", path, file))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	// then we save the file
-	return html.Render(f, page)
+	if isHTML(file) {
+		err = html.Render(f, page)
+	} else {
+		// if not html then download the actual file,
+		// i.e. images, css, javscript etc
+		err = downloadAndSaveFile(f, u)
+	}
+	return err
+}
+
+func downloadAndSaveFile(f *os.File, u *url.URL) error {
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
+
+func isHTML(file string) bool {
+	rgx := regexp.MustCompile("\\.html$")
+	return rgx.Match([]byte(file))
+}
+
+func ensureExtension(f string) string {
+	if f == "" {
+		return "index.html"
+	}
+	rgx := regexp.MustCompile("\\..*$")
+	if !rgx.Match([]byte(f)) {
+		return fmt.Sprintf("%s.html", f)
+	}
+	return f
 }
 
 func updatePageLinks(page *html.Node, base *url.URL) error {
 	var u *url.URL
 	var err error
-	if page.Type == html.ElementNode && page.Data == "a" {
+	if links.IsLinkHavingNode(page) {
 		for i, a := range page.Attr {
-			if a.Key == "href" {
+			if a.Key == "href" || a.Key == "src" {
 				u, err = url.Parse(a.Val)
 				if err != nil {
 					return err
 				}
 				if u.Hostname() == base.Hostname() || !u.IsAbs() {
-					page.Attr[i].Val = urlToFilePath(u.Path)
+					if u.Path != "" {
+						page.Attr[i].Val = urlToFilePath(u.Path)
+					} else {
+						println("in here")
+						page.Attr[i].Val = urlToFilePath("/index.html")
+					}
 				}
 			}
 		}
 
 	}
 	for node := page.FirstChild; node != nil; node = node.NextSibling {
-		if node.FirstChild != nil {
-			if err = updatePageLinks(node, base); err != nil {
-				return err
-			}
+		if err = updatePageLinks(node, base); err != nil {
+			return err
 		}
 	}
 	return nil
