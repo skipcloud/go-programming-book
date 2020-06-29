@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	. "gobook/ch2/popcount"
+
+	. "github.com/skipcloud/go-programming-book/ch2/popcount"
 )
 
 /*
