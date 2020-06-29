@@ -1,9 +1,10 @@
 package intset
 
 import (
-	"bytes"
 	"fmt"
 	"testing"
+
+	"github.com/skipcloud/go-programming-book/ch11/11.2/mapset"
 )
 
 func Example_one() {
@@ -50,43 +51,9 @@ func Example_two() {
 	// {[4398046511618 0 65536]}
 }
 
-// MapIntSet is my built-in map implementation for IntSet, this will be
-// used to test against the IntSet implementation.
-type MapIntSet map[uint64]struct{}
-
-func (m MapIntSet) Has(x int) bool {
-	_, ok := m[uint64(x)]
-	return ok
-}
-
-func (m MapIntSet) Add(x int) {
-	m[uint64(x)] = struct{}{}
-}
-
-func (m MapIntSet) UnionWith(mi MapIntSet) {
-	for k := range mi {
-		if _, ok := m[k]; !ok {
-			m[k] = struct{}{}
-		}
-	}
-}
-
-func (m MapIntSet) String() string {
-	var buf bytes.Buffer
-	buf.WriteByte('{')
-	for k := range m {
-		if buf.Len() > len("{") {
-			buf.WriteByte(' ')
-		}
-		fmt.Fprintf(&buf, "%d", k)
-	}
-	buf.WriteByte('}')
-	return buf.String()
-}
-
 func TestHas(t *testing.T) {
 	input := []int{1, 2, 3, 4, 65, 66, 67}
-	mapSet := MapIntSet{}
+	mapSet := mapset.MapIntSet{}
 	intSet := &IntSet{
 		words: []uint64{0, 0},
 	}
@@ -123,7 +90,7 @@ func TestHas(t *testing.T) {
 
 func TestAdd(t *testing.T) {
 	input := []int{1, 2, 3, 4, 65, 66, 67}
-	mapSet := MapIntSet{}
+	mapSet := mapset.MapIntSet{}
 	intSet := &IntSet{}
 
 	// Test for values that should exist
@@ -147,8 +114,8 @@ func TestUnionWith(t *testing.T) {
 	intSetOne := &IntSet{}
 	intSetTwo := &IntSet{}
 
-	mapSetOne := MapIntSet{}
-	mapSetTwo := MapIntSet{}
+	mapSetOne := mapset.MapIntSet{}
+	mapSetTwo := mapset.MapIntSet{}
 
 	for _, v := range firstSet {
 		intSetOne.Add(v)
