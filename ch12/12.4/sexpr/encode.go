@@ -73,7 +73,7 @@ func encode(buf *bytes.Buffer, v reflect.Value) error {
 		buf.WriteByte('(')
 		for i, key := range v.MapKeys() {
 			if i > 0 {
-				buf.WriteByte(' ')
+				writeWhiteSpace(buf)
 			}
 			buf.WriteByte('(')
 			if err := encode(buf, key); err != nil {
@@ -109,9 +109,16 @@ func encode(buf *bytes.Buffer, v reflect.Value) error {
 		name := v.Type().String()
 		fmt.Fprintf(buf, "%q ", name)
 		str = generateIndent(name)
+
+		elem := v.Elem()
+		if needsIndent(elem.Kind()) {
+			// add one more space to compensate for gap between
+			// name and opening paren
+			str += " "
+		}
 		updateIndentation(str, add)
 
-		if err := encode(buf, v.Elem()); err != nil {
+		if err := encode(buf, elem); err != nil {
 			return err
 		}
 		buf.WriteByte(')')
@@ -157,6 +164,7 @@ func needsIndent(k reflect.Kind) bool {
 	return k == reflect.Struct ||
 		k == reflect.Slice ||
 		k == reflect.Array ||
+		k == reflect.Map ||
 		k == reflect.Interface
 }
 func writeWhiteSpace(b *bytes.Buffer) {

@@ -26,6 +26,12 @@ func main() {
 		e: []int{1, 2, 3},
 		g: nil,
 		h: []string{"one", "two", "three"},
+		i: map[string]int{
+			"key1": 88,
+			"key2": 99,
+			"key3": 10000,
+		},
+		j: false,
 	}
 	b, _ := sexpr.Marshal(m)
 	fmt.Println(string(b))
@@ -43,6 +49,8 @@ type MyStruct struct {
 	}
 	g interface{}
 	h []string
+	i map[string]int
+	j bool
 }
 
 type Skip interface {
