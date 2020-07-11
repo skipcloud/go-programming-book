@@ -10,6 +10,11 @@ import (
 /*
 	Adapt encode so that, as an optimization, it does not encode a field
 	whose value is the zero value of it's type.
+
+	edit: after completing this exercise I found out there's a method in the
+		  reflect package called IsZero(), which would've made this a lot
+		  simpler. I won't edit my solution, but just updating this comment
+		  to show there is usually a simpler way.
 */
 
 type SimpleStruct struct {
